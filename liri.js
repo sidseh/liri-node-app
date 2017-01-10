@@ -1,165 +1,145 @@
-//required items
 var fs = require('fs');
 var keys = require('./keys.js');
+
 var Twitter = require('twitter');
-var spotify = require('spotify');
-var request = require('request');
-var client = new Twitter(keys.twitterKeys);
 
-//record node inputs
-var optionCheck = process.argv[2];
-var movieSong = process.argv[3];
+var client = new Twitter({
+	consumer_key: keys.twitterKeys.consumer_key,
+	consumer_secret: keys.twitterKeys.consumer_secret,
+	access_token_key: keys.twitterKeys.access_token_key,
+	access_token_secret: keys.twitterKeys.access_token_secret
+})
 
-//check which function should be run
-function check(){
-	switch (optionCheck) {
-//do-what-it-says option
-		case  'do-what-it-says':
-				fs.readFile('./random.txt', 'utf8', function(err, data){
-					data = data.split(",");
-					optionCheck = data[0].trim();
-					movieSong = data[1].replace(/"/g, "");
-					movieSong = movieSong.toLowerCase();
-				 	// console.log('optionCheck: ' + optionCheck);
-				 	// console.log('movieSong: ' + movieSong);
-				 	check();
-			 	});
-		break;
-//my-tweets
-		case 'my-tweets': 
-			var params = {screen_name: 'theAmberJets'};
-			client.get('statuses/user_timeline', params, function(error, tweets, response){
-			  	if (!error) {
-			  		for (var i =0; i<tweets.length; i++){
-			  		    console.log(tweets[i].text);
 
-//append log.txt to include tweets		  		    
-			  		    fs.appendFile('log.txt', tweets[i].text + '\n', 'utf8', function(err, data){
-							if (err) return console.log(err);
-							// console.log('the file has been created');
-						});
-			  		}
+switch (process.argv[2]) {
+	case 'my-tweets':
+		var params = {screen_name: 'KimKardashian'};
+		client.get('statuses/user_timeline', params, function(error, tweets, response) {
+	  		if (!error) {
+	  			
+	  			for (i=0; i < tweets.length; i++) {
+	  				console.log(JSON.stringify(tweets[i].text, null, 2));	
+	  				console.log(JSON.stringify(tweets[i].created_at, null, 2));	
+	  				console.log('======================================================\n')
+	  				if (i == 19) {
+	  					break;
+	  				}
+	  			}
+	  		}
+	  		else {
+	  			console.log(error);	
+	  		}
+  		});
 
-			  	}
-			});
-		break;
+  		break;
 
-//spotify-this-song
-		case 'spotify-this-song':
+  	case 'spotify-this-song':
+  		var spotify = require('spotify');
+  		var songArgStr = "";
+  		for (i=3; i < process.argv.length; i++) {
+  			songArgStr += process.argv[i] + ' ';
+  		}
 
-//if song is undefined
-			if(movieSong === undefined){
-					spotify.search({ type: 'track', query: 'whats my age again' }, function(err, data) {
-		    
-				    if ( err ) {
-				        console.log('Error occurred: ' + err);
-				        return;
-		    		}
+  		if (!process.argv[3]) {
+  			console.log('"The Sign" by Ace of Base');
+  			return;
+  		}
 
-//console.log items for default song
-				    	console.log("artist: " + data.tracks.items[0].artists[0].name + "\n" +
-				    				"song name: " + data.tracks.items[0].name + "\n" +
-				    				"preview link: " + data.tracks.items[0].preview_url + "\n" +
-				    				"album name: " + data.tracks.items[0].album.name + "\n");
 
-//append log.txt with spotify default search
-				    	fs.appendFile('log.txt', "spotify-this-song: \n" +
-				    				"artist: " + data.tracks.items[0].artists[0].name + "\n" +
-			    					"song name: " + data.tracks.items[0].name + "\n" +
-			    					"preview link: " + data.tracks.items[0].preview_url + "\n" +
-			    					"album name: " + data.tracks.items[0].album.name + "\n" 
-			    					, 'utf8', function(err, data){
-									if (err) return console.log(err);
-									// console.log('the file has been created');
-								});
-					});
+		spotify.search({ type: 'track', query: songArgStr }, function(err, data) {
+	    	if ( err ) {
+	        	console.error(err);
+	        	return;
+	    	}
+ 			
+ 			else {
+ 				console.log(data.tracks.items[0].artists[0].name);
+ 				console.log(data.tracks.items[0].name);
+ 				console.log(data.tracks.items[0].preview_url);
+ 				console.log(data.tracks.items[0].album.name);	
+ 			}
+ 			
+		});
 
-//get search item from node and search spotify			
-				 } else {
-				 	spotify.search({ type: 'track', query: movieSong }, function(err, data) {
-				    if ( err ) {
-				        console.log('Error occurred: ' + err);
-				        return;
-		    		}
-
-//loop through results and console.log items
-				    for (var i = 0; i < data.tracks.items.length; i++) {
-				    	console.log("artist: " + data.tracks.items[i].artists[0].name + "\n" +
-				    				"song name: " + data.tracks.items[i].name + "\n" +
-				    				"preview link: " + data.tracks.items[i].preview_url + "\n" +
-				    				"album name: " + data.tracks.items[i].album.name + "\n");
-
-//append search to log.txt
-				    	fs.appendFile('log.txt', "spotify-this-song: \n" +
-				    				"artist: " + data.tracks.items[i].artists[0].name + "\n" +
-			    					"song name: " + data.tracks.items[i].name + "\n" +
-			    					"preview link: " + data.tracks.items[i].preview_url + "\n" +
-			    					"album name: " + data.tracks.items[i].album.name + "\n" 
-			    					, 'utf8', function(err, data){
-									if (err) return console.log(err);
-									// console.log('the file has been created');
-								});
-				    	}
-					});
-
-				 }
 		break;
 
-//search imdb
-//if no term is entered Mr. Nobody is default
-		case 'movie-this':
-			if (movieSong === undefined) {
-				movieSong = 'Mr+Nobody';
+	case 'movie-this':
+		var movieArgStr = "";
+		var omdb = require('omdb');
+
+		var movieArgStr = "";
+			for (i=3; i < process.argv.length; i++) {
+				movieArgStr += process.argv[i] + ' ';
 			}
 
-//trim extra space from input and replace spaces with +
-			var movieChoice = movieSong.trim().replace(/ /g,"+");
-			//console.log(movieChoice);
-				request('http://www.omdbapi.com/?t='+movieChoice+'&y=&plot=short&r=json', function (error, response, body) {
-			 if (!error && response.statusCode == 200) {
+		movieArgStr = movieArgStr.trim();
 
-//parse result as JSON
-			    var json = JSON.parse(body);
+		if (!process.argv[3]) {
+			console.log("Mr. Nobody")
+			return;
+		}
 
-//console.log results
-			    console.log('Title: '+json.Title + "\n" +
-			    			'Year: '+json.Year + "\n" +
-			    			'IMDB Rating: '+json.imdbRating + "\n" +
-			   				'Country: '+json.Country + "\n" +
-			    			'Language: '+json.Language	+ "\n" +
-			    			'Plot: '+json.Plot + "\n" +
-			    			'Actors: '+json.Actors);
-			    //console.log('Rotten Tomatoes Rating: '+json.Title);
-			    //console.log('Rotten Tomatoes UrL: '+json.Title);
 
-//append imdb search to log.txt
-			    fs.appendFile('log.txt', 'movie-this: \n' +
-			    			'Title: '+json.Title + "\n" +
-			    			'Year: '+json.Year + "\n" +
-			    			'IMDB Rating: '+json.imdbRating + "\n" +
-			   				'Country: '+json.Country + "\n" +
-			    			'Language: '+json.Language	+ "\n" +
-			    			'Plot: '+json.Plot + "\n" +
-			    			'Actors: '+json.Actors
-			    			, 'utf8', function(err, data){
-							if (err) return console.log(err);
-							// console.log('the file has been created');
-						});
-			  }
-			})
+		omdb.get({ title: movieArgStr}, true, function(err, movie) {
+		    if(err) {
+		        return console.error(err);
+		    }
+		 
+		    if(!movie) {
+		        return console.log('Movie not found!');
+		    }
 			
+			// console.log(movie);		 	
+		    console.log('Title: %s ', movie.title + '\n');
+	        console.log('Year: %d', movie.year + '\n');
+	        console.log('IMDB Rating: %s', movie.imdb.rating + '\n');
+	        console.log('Country Produced In: %s', movie.countries[0] + '\n');
+	        console.log('Actors: %s', movie.actors + '\n');
+	        console.log('Plot: %s', movie.plot);
+
+		});
+
+		break;
+	
+	case 'do-what-it-says':
+		var cmd = require('node-cmd');
+		var child_process = require('child_process');
+		// read the keys file, store the info into two arguments
+		fs.readFile('random.js', function(err, data) {
+			if(err) {
+				console.log(err);
+			}
+
+			// string which will be the new input for the command line
+			var str = "node liri.js ";
+			// var str = "";
+			var arr = data.toString().split(',');
+			var arg1 = arr[0];
+			var arg2 = arr[1];
+
+			// add the arguments taken from random.js and add them to process arguments array
+			process.argv[2] = arg1;
+			process.argv[3] = arg2;
+
+			str += process.argv[2] + ' ' + process.argv[3];
+			console.log(str);
+			child_process.exec(str, function(error, stdout, stderr) {
+	  			if (error) {
+	  				console.error(error);
+	  			}
+	  			// command output is in stdout
+	  			console.log(stdout);
+			});
+		});
+
 		break;
 
-//if choice does not exist
-		default:
-		console.log("Sorry, that is not an option");
-		fs.appendFile('log.txt', 'Sorry, that is not an option' + '\n', 'utf8', function(err, data){
-					if (err) return console.log(err);
-							// console.log('the file has been created');
-					});
 
-		}
-}
+	default:
+		console.log('Please type a valid command');
 
-//run function
- check();
+	
+
+  		
+
+}		
